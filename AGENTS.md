@@ -67,7 +67,8 @@ boat-agent/
 │   ├── 13_OPEN_QUESTIONS.md             ← architecture-level open work
 │   ├── 14_MODULE_BOUNTIES.md            ← claimable modules + generalization tracks
 │   ├── 15_CODE_REVIEW.md                ← review log: findings, fixes, open weaknesses
-│   └── 16_ECOSYSTEM_INTEGRATION.md      ← tzpro-agent & sonar-vision family synergy
+│   ├── 16_ECOSYSTEM_INTEGRATION.md      ← tzpro-agent & sonar-vision family synergy
+│   └── 17_CASCADED_PERCEPTION.md        ← three-loop analyzer: M1/M10/H1 + gaze channel
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
 │       ├── kernel/                scheduler, tick, module lifecycle
