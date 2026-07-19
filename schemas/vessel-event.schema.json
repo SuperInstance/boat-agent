@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boat-agent/schemas/vessel-event.schema.json",
+  "title": "VesselEvent v2",
+  "description": "The universal bus envelope. Contract: docs/06_BUS_PROTOCOL.md. Rust types in core/src/bus/events.rs DERIVE from this file — change this first.",
+  "type": "object",
+  "required": ["id", "timestamp_ms", "lane", "kind", "source", "provenance", "payload"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "ULID — unique, sortable"
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Kernel-assigned monotonic sequence. Emitters send 0."
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "description": "Epoch ms at the SOURCE, not at ingest"
+    },
+    "lane": {
+      "type": "string",
+      "enum": ["critical", "telemetry", "narrative"],
+      "description": "critical is a privilege: L0 drivers + envelope only"
+    },
+    "kind": {
+      "type": "string",
+      "pattern": "^[a-z]+\\.[a-z_]+\\.[a-z_]+$",
+      "description": "<domain>.<entity>.<action> — registry in docs/06"
+    },
+    "source": {
+      "type": "object",
+      "required": ["module", "actor"],
+      "properties": {
+        "module": { "type": "string", "examples": ["driver.nmea0183", "agent.engineer"] },
+        "instance": { "type": "string", "examples": ["com3@4800"] },
+        "actor": {
+          "type": "string",
+          "pattern": "^(system|human|agent:(operator|engineer|analyst|auditor|fleet))$"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["authority", "confidence", "basis"],
+      "properties": {
+        "authority": {
+          "type": "string",
+          "description": "driver | human | playbook:<id>@<hash> | mission:<name> | agent:<role>. Re-verified by the envelope before actuation."
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "basis": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Event ids this event derives from. Makes the log a graph; replay depends on it."
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "description": "Per-kind body. Each registered kind has a $ref below."
+    }
+  },
+  "$defs": {
+    "sensor.gps.fix": {
+      "type": "object",
+      "required": ["lat", "lon", "sog_kn", "cog_deg", "hdop", "sats"],
+      "properties": {
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "sog_kn": { "type": "number", "minimum": 0 },
+        "cog_deg": { "type": "number", "minimum": 0, "maximum": 360 },
+        "hdop": { "type": "number", "minimum": 0 },
+        "sats": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "human.dial.set": {
+      "type": "object",
+      "required": ["level", "by_whom"],
+      "properties": {
+        "level": { "type": "integer", "enum": [0, 1, 2, 3] },
+        "by_whom": { "type": "string" }
+      },
+      "description": "Ceiling, not floor. Restart default is 1 (Coach)."
+    },
+    "control.intent": {
+      "type": "object",
+      "required": ["horizon_s"],
+      "properties": {
+        "requested_rudder_deg": { "type": ["number", "null"] },
+        "requested_throttle_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "horizon_s": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "description": "What a playbook WANTS. The envelope owns what HAPPENS."
+    },
+    "agent.escalation.request": {
+      "type": "object",
+      "required": ["question", "options", "recommendation", "context_bundle_ref", "expires_s", "fallback_on_timeout"],
+      "properties": {
+        "question": { "type": "string" },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "consequence"],
+            "properties": {
+              "id": { "type": "string" },
+              "label": { "type": "string" },
+              "consequence": { "type": "string" }
+            }
+          }
+        },
+        "recommendation": { "type": "string" },
+        "context_bundle_ref": { "type": "string" },
+        "expires_s": { "type": "integer", "exclusiveMinimum": 0 },
+        "fallback_on_timeout": { "type": "string", "description": "Declared safe default — the boat never waits on the human." }
+      }
+    }
+  }
+}

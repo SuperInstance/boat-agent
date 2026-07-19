@@ -1,0 +1,20 @@
+# Rust
+target/
+**/*.rs.bk
+
+# Node / Tauri (future shell)
+node_modules/
+dist/
+
+# Vessel data & secrets — never commit live data or keys
+data/
+*.key
+*_ed25519
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local tool settings
+.claude/

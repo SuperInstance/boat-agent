@@ -1,0 +1,45 @@
+# provenance.toml — the WHY trail for trolling_baseline
+# Powers `boatctl memory why trolling_baseline@b3f9…`
+# Every rule must trace to evidence or Stage 2 rejects it.
+
+[[rule]]
+function = "evaluate_propulsion"
+summary = "Throttle pre-ramp before headwind turns"
+
+[[rule.evidence]]
+kind = "voice_transcript"
+ref = "evt_01J3X…"
+quote = "I always give her a bit before the turn or she falls off."
+speaker = "capt. r. delgado"
+alignment_confidence = 0.94          # legacy RQ-001 gate: ≥0.80 required
+
+[[rule.evidence]]
+kind = "pattern"
+ref = "mem:patterns/p_221"
+instances = 14
+corroboration = "throttle +3–6% within 8s before |wind_angle|<30° turns, sog held vs. −0.6kn otherwise"
+
+[[rule.evidence]]
+kind = "replay"
+ref = "evidence/replay_report.json"
+result = "sog variance through turns reduced 41% on calm_2024_06; no violations"
+
+[[rule]]
+function = "evaluate_steering"
+summary = "Swing damping on following seas"
+
+[[rule.evidence]]
+kind = "pattern"
+ref = "mem:patterns/p_198"
+instances = 22
+corroboration = "captain counter-steers swing rate, not heading error, in following seas"
+
+[[rule.evidence]]
+kind = "escalation_confirmation"
+ref = "mem:escalations/e_7103"
+quote = "yeah, you're steering the wiggle out."
+
+[[rule.evidence]]
+kind = "replay"
+ref = "evidence/replay_report.json"
+result = "swing amplitude −38% on rough_2024_09; zero oscillation warnings"

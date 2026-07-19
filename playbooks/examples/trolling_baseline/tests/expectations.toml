@@ -1,0 +1,24 @@
+# tests/expectations.toml — pass/fail bounds for Stage 3 replay
+# The replay harness checks every tick of every corpus trip against these.
+
+[envelope]
+# No intent may ever exceed the declared playbook envelope.
+max_rudder_step_deg = 3.0
+max_throttle_step_pct = 8.0
+throttle_range_pct = [10.0, 40.0]
+
+[stability]
+# Oscillation guard: intent sign-flips per minute, per corpus.
+max_rudder_sign_flips_per_min = 6
+max_throttle_sign_flips_per_min = 8
+
+[sensor_gap]
+# During GPS/compass gaps: intents must equal "hold" (no change from
+# last known-good command). Guessing on stale sensors is a hard fail.
+hold_on_gap = true
+
+[performance]
+# Informational targets — reported, not pass/fail. These feed the
+# human's approval screen ("what will the boat do differently?").
+target_sog_variance_reduction_pct = 30
+target_swing_amplitude_reduction_pct = 25

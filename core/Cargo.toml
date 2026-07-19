@@ -1,0 +1,32 @@
+[package]
+name = "boat-core"
+version = "0.1.0"
+edition = "2021"
+description = "Vessel Intelligence OS microkernel: bus, state, envelope, playbook host"
+license = "Proprietary"
+
+# GOVERNING RULE (AGENTS.md, prime directive 1):
+# src/envelope/ is read-only for agents. Changes there are human-only.
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+sha2 = "0.10"
+hex = "0.4"
+ulid = { version = "1", features = ["serde"] }
+toml = "0.8"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+anyhow = "1"
+async-trait = "0.1"
+tokio-util = "0.7"
+
+# L0 adapters (added per-vessel, behind feature flags):
+# tokio-serial = "5.4"      # NMEA-0183 / N2K gateways
+# scrap = "0.5"             # screen capture (shell adapter, not headless)
+
+[features]
+default = []
+replay = []   # run kernel against recorded black-box corpora (no hardware)

@@ -1,0 +1,46 @@
+# playbook.toml — trolling_baseline
+# Validated against schemas/playbook-manifest.schema.json
+
+[playbook]
+name = "trolling_baseline"
+version = "1.2.0"
+authored_by = "agent:engineer"
+description = "Hold 2.3 knots through the swing; give her a bit before headwind turns so she doesn't fall off."
+derived_from = [
+  "mem:patterns/p_221_throttle_ramp_before_headwind_turn",
+  "mem:patterns/p_198_swing_damping_on_following_sea",
+]
+
+[interface]
+runtime = "python3"
+entrypoints = { evaluate = "rules.evaluate" }
+requires_sensors = [
+  "sensor.gps.fix",
+  "sensor.compass.heading",
+  "sensor.engine.rpm",
+  "sensor.wind.apparent",
+]
+
+# The DECLARED envelope. Must be ≤ vessel.toml [envelope] hard limits.
+# Stage 2 verifies the clamps in rules.py actually implement these.
+[safety]
+max_rudder_step_deg = 3.0
+max_throttle_step_pct = 8.0
+throttle_range_pct = [10.0, 40.0]
+declared_limits_note = "Per-tick steps; absolute bounds enforced by the envelope regardless."
+
+[gate]
+replay_corpus = ["calm_2024_06", "rough_2024_09", "gps_dropout_2024_07", "shoaling_2024_08"]
+shadow_min_hours = 10.0
+shadow_min_agreement = 0.90
+auto_demote_veto_rate = 0.2
+
+# ── Sealed by the gate machinery. IMMUTABLE. ──
+[evidence]
+static_analysis_hash = "sa_9f2c…"
+replay_report_hash = "rr_41de…"
+shadow_report_hash = ""            # filled when shadow period completes
+[evidence.human_approval]
+by = "capt. r. delgado"
+at_ms = 1711974008000
+event_id = "evt_01J4Z2…"

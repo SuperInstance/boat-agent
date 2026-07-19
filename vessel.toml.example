@@ -1,0 +1,111 @@
+# ═══════════════════════════════════════════════════════════════════
+#  vessel.toml — THE ONE FILE THAT DESCRIBES THE BOAT
+#
+#  Click-and-play = this file + hardware auto-discovery.
+#  The setup wizard's only job is to produce this file.
+#  Schema: schemas/vessel-profile.schema.json
+#  Loader: core/src/config.rs
+# ═══════════════════════════════════════════════════════════════════
+
+[vessel]
+id = "fv_northstar_01"
+name = "F/V Northstar"
+vessel_type = "troller"            # troller | longliner | seiner | charter
+data_dir = "./data"                # profile-relative — no hardcoded paths
+
+# ─────────────────────────────────────────────────────────────────
+# THE SAFETY NUMBERS. The envelope reads these and nothing else.
+# Defaults match the legacy proven values; tune per vessel only with
+# sea-trial evidence (replay-verified). Agents may NOT write this table.
+# ─────────────────────────────────────────────────────────────────
+[envelope]
+max_rudder_deg = 15.0              # hard steering bound
+min_autopilot_speed_kn = 2.0       # no autopilot below steerage
+max_trolling_rpm = 1800            # redline protection
+max_throttle_step_pct = 15.0       # rate limit per adjustment
+trolling_throttle_ceiling_pct = 40.0
+watchdog_heartbeat_ms = 300        # legacy Insight-001: 800 was too slow
+watchdog_miss_threshold = 3        # ~900ms to trip → relay opens, buzzer
+shoaling_reject_m_per_min = 2.0    # depth-trend guard
+
+# ─────────────────────────────────────────────────────────────────
+# DRIVERS — auto-discovery fills these in; captain confirms one tap.
+# ─────────────────────────────────────────────────────────────────
+[drivers.gps]
+kind = "nmea0183"
+port = "COM3"
+baud = 4800                        # discovered by sniffing, not hardcoded
+provides = ["sensor.gps.fix", "sensor.compass.heading", "sensor.depth.sounder"]
+
+[drivers.gps_splice]
+kind = "com_splice"                # legacy Phase 4: share GPS with nav software
+physical = "COM3"
+virtual_out = ["COM4", "COM5"]     # COM4 → nav software, COM5 → agent stack
+
+[drivers.engine]
+kind = "n2k"
+interface = "can0"                 # or gateway serial port
+pgns = [127488]                    # Engine Parameters Rapid Update
+
+[drivers.autopilot]
+kind = "autopilot"                 # actuator — envelope-owned
+port = "COM6"
+baud = 4800
+sentence = "GPAPB"                 # checksum always (legacy Insight-002)
+
+[drivers.throttle]
+kind = "throttle"                  # actuator — envelope-owned
+mechanism = "linear_servo"         # linear_servo | digital_pot (fly-by-wire)
+
+[drivers.jog_lever]
+kind = "jog_lever"                 # THE human veto — critical lane
+interface = "gpio"
+pin = 17
+
+# ─────────────────────────────────────────────────────────────────
+# AGENT GRANTS — capabilities, enforced at bus ingest (docs/10).
+# ─────────────────────────────────────────────────────────────────
+[agents.operator]
+may_emit = ["control.intent.*", "agent.shadow.delta", "agent.escalation.request"]
+may_invoke = ["state", "mission", "playbook:list/show", "memory:query"]
+escalation_budget_per_hour = 6
+
+[agents.engineer]
+may_emit = ["agent.proposal.playbook", "agent.escalation.request"]
+may_invoke = ["playbook:*", "memory:*", "audit:verify"]
+escalation_budget_per_hour = 3
+# NOTE: engineer can PROPOSE and REPLAY. Activation requires the human
+# gate — no grant exists for that path. Structural, not polite.
+
+[agents.analyst]
+may_emit = ["agent.analysis.finding", "agent.shadow.delta"]
+may_invoke = ["memory:*", "state", "bus:tail"]
+escalation_budget_per_hour = 2
+# No control.* grant, ever. Enforced at ingest.
+
+[agents.auditor]
+may_emit = ["agent.audit.result", "system.degraded_mode"]
+may_invoke = ["audit:*", "memory:query", "bus:tail", "state"]
+escalation_budget_per_hour = 1000   # the Auditor is never rate-limited
+
+# ─────────────────────────────────────────────────────────────────
+# MISSIONS — L3 target-setters. Playbooks are selected per mission.
+# ─────────────────────────────────────────────────────────────────
+[missions.transit]
+playbook = "transit_standard@<hash>"
+targets = { target_track_deg = 147.0 }
+
+[missions.trolling]
+playbook = "trolling_baseline@<hash>"
+targets = { target_sog_kn = 2.3 }
+
+[missions.anchor_watch]
+playbook = "anchor_watch@<hash>"
+
+# ─────────────────────────────────────────────────────────────────
+# CLOUD — amplifier, never a dependency. Boat is fully smart offline.
+# ─────────────────────────────────────────────────────────────────
+[cloud]
+worker_url = "https://boat-edge.example.workers.dev"
+sync_enabled = true
+vessel_key_path = "./data/keys/vessel_ed25519.pub"

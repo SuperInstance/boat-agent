@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boat-agent/schemas/vessel-profile.schema.json",
+  "title": "VesselProfile",
+  "description": "vessel.toml — the one file that describes the boat. Loader: core/src/config.rs. The wizard's only output.",
+  "type": "object",
+  "required": ["vessel", "envelope", "drivers", "agents"],
+  "properties": {
+    "vessel": {
+      "type": "object",
+      "required": ["id", "name", "vessel_type", "data_dir"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "name": { "type": "string" },
+        "vessel_type": { "type": "string", "enum": ["troller", "longliner", "seiner", "charter", "other"] },
+        "data_dir": { "type": "string", "description": "Profile-relative. Hardcoded absolute paths are forbidden." }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "description": "THE safety numbers. Agents may read, never write. Changes are human-only and replay-verified.",
+      "required": [
+        "max_rudder_deg", "min_autopilot_speed_kn", "max_trolling_rpm",
+        "max_throttle_step_pct", "trolling_throttle_ceiling_pct",
+        "watchdog_heartbeat_ms", "watchdog_miss_threshold", "shoaling_reject_m_per_min"
+      ],
+      "properties": {
+        "max_rudder_deg": { "type": "number", "exclusiveMinimum": 0, "maximum": 35 },
+        "min_autopilot_speed_kn": { "type": "number", "minimum": 0.5 },
+        "max_trolling_rpm": { "type": "integer", "exclusiveMinimum": 0 },
+        "max_throttle_step_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 25 },
+        "trolling_throttle_ceiling_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+        "watchdog_heartbeat_ms": { "type": "integer", "minimum": 100, "maximum": 1000 },
+        "watchdog_miss_threshold": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "shoaling_reject_m_per_min": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "drivers": {
+      "type": "object",
+      "description": "Map of driver instance name → config. Each config is validated against the driver's own config_schema (DriverDescriptor).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["nmea0183", "n2k", "com_splice", "jog_lever", "screencap", "autopilot", "throttle", "custom"] }
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "description": "Capability grants per agent role. Enforced at bus ingest — structural, not polite.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["may_emit", "may_invoke", "escalation_budget_per_hour"],
+        "properties": {
+          "may_emit": { "type": "array", "items": { "type": "string" }, "description": "Kind globs, e.g. agent.shadow.*" },
+          "may_invoke": { "type": "array", "items": { "type": "string" }, "description": "boatctl command groups" },
+          "escalation_budget_per_hour": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "missions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["playbook"],
+        "properties": {
+          "playbook": { "type": "string", "pattern": "^[a-z0-9_]+@.+$", "description": "name@content-hash" },
+          "targets": { "type": "object" }
+        }
+      }
+    },
+    "cloud": {
+      "type": "object",
+      "required": ["worker_url", "sync_enabled", "vessel_key_path"],
+      "properties": {
+        "worker_url": { "type": "string", "format": "uri" },
+        "sync_enabled": { "type": "boolean" },
+        "vessel_key_path": { "type": "string" }
+      },
+      "description": "Amplifier, never a dependency. The boat is fully intelligent offline."
+    }
+  }
+}

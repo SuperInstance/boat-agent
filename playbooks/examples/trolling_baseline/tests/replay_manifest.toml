@@ -1,0 +1,26 @@
+# tests/replay_manifest.toml — what this playbook must survive (Stage 3)
+# Corpora are curated by the Analyst from black-box history (docs/07 §Replay).
+
+[[corpus]]
+name = "calm_2024_06"
+trips = 6
+hours = 31.5
+description = "flat water, light variable wind"
+
+[[corpus]]
+name = "rough_2024_09"
+trips = 4
+hours = 22.0
+description = "6ft swell, 20kn following wind — gain-scheduling stress test (legacy RQ-003)"
+
+[[corpus]]
+name = "gps_dropout_2024_07"
+trips = 2
+hours = 9.0
+description = "simulated + real GPS gaps up to 90s — must hold, never spike"
+
+[[corpus]]
+name = "shoaling_2024_08"
+trips = 3
+hours = 14.0
+description = "rising bottom; envelope depth-trend guard interaction"

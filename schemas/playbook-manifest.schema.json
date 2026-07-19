@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boat-agent/schemas/playbook-manifest.schema.json",
+  "title": "PlaybookManifest",
+  "description": "playbook.toml inside a playbook bundle. Lifecycle: docs/07_PLAYBOOK_LIFECYCLE.md. A bundle without a sealed replay report cannot pass Stage 3.",
+  "type": "object",
+  "required": ["playbook", "interface", "safety", "gate"],
+  "properties": {
+    "playbook": {
+      "type": "object",
+      "required": ["name", "version", "authored_by", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "version": { "type": "string" },
+        "authored_by": { "type": "string", "description": "agent:engineer | human | fleet:<vessel_id>" },
+        "description": { "type": "string", "description": "Plain-language, in the captain's vocabulary from the vocab namespace." },
+        "derived_from": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Pattern/transcript refs from Memory — the WHY trail."
+        }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "required": ["runtime", "entrypoints"],
+      "properties": {
+        "runtime": { "type": "string", "enum": ["python3", "wasm"], "description": "python3 today; wasm is the fuel-metered migration target. Same trait." },
+        "entrypoints": {
+          "type": "object",
+          "required": ["evaluate"],
+          "properties": {
+            "evaluate": { "type": "string", "description": "f(snapshot, targets) → intent. PURE." }
+          }
+        },
+        "requires_sensors": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sensor kinds the playbook needs live. Below this → kernel safe-hold + auto-demote."
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "description": "The playbook's DECLARED envelope. The safety envelope is the final backstop — but playbooks must show their own work (Stage 2 checks these clamps exist).",
+      "required": ["max_rudder_step_deg", "max_throttle_step_pct", "throttle_range_pct"],
+      "properties": {
+        "max_rudder_step_deg": { "type": "number", "exclusiveMinimum": 0 },
+        "max_throttle_step_pct": { "type": "number", "exclusiveMinimum": 0 },
+        "throttle_range_pct": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "declared_limits_note": { "type": "string" }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "required": ["replay_corpus", "shadow_min_hours", "shadow_min_agreement"],
+      "properties": {
+        "replay_corpus": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Named replay sets that MUST pass: calm, rough, gps_dropout, shoaling, ..."
+        },
+        "shadow_min_hours": { "type": "number", "exclusiveMinimum": 0 },
+        "shadow_min_agreement": { "type": "number", "minimum": 0, "maximum": 1 },
+        "auto_demote_veto_rate": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.2 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Sealed by the gate machinery. Immutable once written; Engineer agents may never edit sealed evidence.",
+      "properties": {
+        "static_analysis_hash": { "type": "string" },
+        "replay_report_hash": { "type": "string" },
+        "shadow_report_hash": { "type": "string" },
+        "human_approval": {
+          "type": "object",
+          "properties": {
+            "by": { "type": "string" },
+            "at_ms": { "type": "integer" },
+            "event_id": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
