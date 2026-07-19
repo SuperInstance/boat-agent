@@ -222,6 +222,26 @@ retrofitting the marine use onto it (proof it's truly general).
 
 ---
 
+## Ecosystem integration (see docs/16 — tzpro-agent & sonar-vision family)
+
+### B-INT-1: Corpus importer (tzpro captures → replay corpus)
+- **Contract:** replay corpus manifests per docs/07; labels → `expectations.toml` shape.
+- **Build:** convert `captures/v3/**` JSONL (timestamped, GPS-linked, catch-linked echogram analyses) into replay slices + a labeled frame dataset. Pure data work, zero live-integration risk. **Do this first — it seeds RQ-002's dataset and B-CORE-1's material.**
+
+### B-INT-2: Vocabulary migration (tzpro Bayesian vocab → `vocab` namespace)
+- **Contract:** docs/08 namespaces; every entry carries `provenance="import:tzpro-agent"`. One schema going forward — ours.
+
+### B-INT-3: tzpro analyzer as event-emitting sidecar
+- **Contract:** emits `sensor.acoustics.*` narrative events as NDJSON on stdout (playbook-host protocol). New kinds registered per docs/06 procedure. Supervised child process; kernel doesn't care it's Python.
+
+### B-INT-4: Ship Log Worker ↔ memory digest sync
+- **Contract:** docs/08 sync (digests, provenance precedence) + anonymized-pattern fleet policy (vocabulary shared, catch counts private).
+
+### B-INT-5: Cross-frame blob tracker (sonar-vision-rs)
+- **Contract:** new `acoustics.track.*` events; ObjectTracker sidecar in Rust. Turns per-frame blob counts into persistent school tracks — much stronger Analyst patterns.
+
+---
+
 ## Completed bounties
 
 *(none yet — the menu opened today)*
