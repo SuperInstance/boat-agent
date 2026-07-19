@@ -53,19 +53,25 @@ docs/                vision, architecture, protocols, rationale, bounties
 
 ## Status
 
-**Core infrastructure is IMPLEMENTED and tested.**
+**Core infrastructure is implemented, reviewed, and tested** (31/31 unit
+tests passing, boot smoke test verified — see
+[docs/15_CODE_REVIEW.md](docs/15_CODE_REVIEW.md) for the review record,
+including safety-critical bugs found and fixed after the initial
+implementation).
 
 ### ✅ Completed (v0.1.0 - Foundation)
 
-| Module | Status | Lines | Coverage |
-|--------|--------|-------|----------|
-| Lane Router (`bus/lanes.rs`) | ✅ Complete | 557 | Full tests |
-| State Reducer (`state/mod.rs`) | ✅ Complete | 726 | Full tests |
-| Safety Envelope (`envelope/mod.rs`) | ✅ Complete | 631 | Full tests |
-| Black Box (`blackbox/mod.rs`) | ✅ Complete | 533 | Full tests |
-| Kernel Loop (`kernel/mod.rs`) | ✅ Complete | 551 | Full tests |
+| Module | Status | Notes |
+|--------|--------|-------|
+| Lane Router (`bus/lanes.rs`) | ✅ Complete | coalescing + capability tests |
+| State Reducer (`state/mod.rs`) | ✅ Complete | deterministic, replay-pure |
+| Safety Envelope (`envelope/mod.rs`) | ✅ Complete | regression-tested (Coach dial, clamped-command checks) |
+| Black Box (`blackbox/mod.rs`) | ✅ Complete | chain resume + verification tested |
+| Kernel Loop (`kernel/mod.rs`) | ✅ Complete | boot smoke test passes |
 
-**Total:** 2,998 lines of production Rust code with comprehensive documentation and test coverage.
+Known open weaknesses are tracked explicitly in
+[docs/15_CODE_REVIEW.md](docs/15_CODE_REVIEW.md) (W-1 through W-9) —
+read them before building on these modules.
 
 ### 🔄 In Progress
 

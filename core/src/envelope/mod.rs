@@ -90,14 +90,12 @@ impl SafetyEnvelope {
     pub fn arbitrate(&mut self, intent: &Intent, state: &VesselState) -> Arbitration {
         // Check 1: HUMAN VETO — absolute preemption
         if state.human.override_active {
-            return Arbitration::Rejected(
-                "human override active — all intents rejected until jog lever quiet".to_string()
-            );
+            return self.reject("human override active — all intents rejected until jog lever quiet");
         }
 
         // Check 2: WATCHDOG — kernel heartbeat stale
         if self.memory.missed_kernel_heartbeats >= self.limits.watchdog_miss_threshold {
-            return Arbitration::Rejected(format!(
+            return self.reject_owned(format!(
                 "watchdog tripped: missed {} heartbeats — safe state held",
                 self.memory.missed_kernel_heartbeats
             ));
@@ -106,44 +104,70 @@ impl SafetyEnvelope {
         // Check 3: DIAL CEILING — effective autonomy = min(dial, conditions allow)
         let effective_dial = self.effective_autonomy(state);
 
-        // At Log level, reject all intents (observation only)
+        // Log = observation only. Coach = advisory only: intents may be
+        // displayed to the human, but NOTHING actuates. The kernel surfaces
+        // advisory intents as shadow deltas; the envelope's actuation answer
+        // at these levels is always Rejected. (docs/09)
         if effective_dial == AutonomyLevel::Log {
-            return Arbitration::Rejected(
-                "autonomy dial at Log — observation only, no actuation".to_string()
+            return self.reject("autonomy dial at Log — observation only, no actuation");
+        }
+        if effective_dial == AutonomyLevel::Coach {
+            return self.reject(
+                "autonomy dial at Coach — advisory only, no actuation (intent logged as shadow delta)"
             );
         }
-
-        // At Coach level, intents become advisory (emit but don't actuate)
-        // This is handled by the caller — we return Approved but with advisory flag
-        // For now, treat Coach as "suggest only"
+        // TODO(docs/09): Supervise should also require standing consent per
+        // action class. Consent machinery lands with the mission layer;
+        // until then Supervise actuates like Autopilot within these checks.
 
         // Check 4: SENSOR SANITY — don't actuate on bad data
         if let Some(reason) = self.check_sensor_sanity(state, intent) {
-            return Arbitration::Rejected(reason);
+            return self.reject_owned(reason);
         }
 
-        // Check 5: HARD BOUNDS — absolute limits from vessel.toml
-        if let Some(clamped) = self.check_hard_bounds(intent) {
-            return Arbitration::Clamped {
-                command: clamped,
-                reason: "intent exceeds vessel hard limits — clamped to safe values".to_string(),
-            };
-        }
+        // Check 5: HARD BOUNDS — clamp, then KEEP CHECKING. Clamping bounds
+        // magnitude; it says nothing about rate or context. A clamped
+        // command must still pass checks 6–7 like any other.
+        let (effective, clamp_reason) = match self.clamp_hard_bounds(intent) {
+            Some(clamped) => (
+                clamped,
+                Some("intent exceeds vessel hard limits — clamped to safe values".to_string()),
+            ),
+            None => (intent.clone(), None),
+        };
 
-        // Check 6: RATE LIMITS — prevent oscillation and runaway
-        if let Some(reason) = self.check_rate_limits(intent) {
-            self.memory.consecutive_rejections += 1;
-            return Arbitration::Rejected(reason);
+        // Check 6: RATE LIMITS — applied to the (possibly clamped) command.
+        // Time source: the state's own timestamp, never wall clock (A2).
+        if let Some(reason) = self.check_rate_limits(&effective, state.timestamp_ms) {
+            return self.reject_owned(reason);
         }
 
         // Check 7: CONTEXT GUARDS — situation-specific safety
-        if let Some(reason) = self.check_context_guards(state, intent) {
-            return Arbitration::Rejected(reason);
+        if let Some(reason) = self.check_context_guards(state, &effective) {
+            return self.reject_owned(reason);
         }
 
-        // All checks passed — approve the intent
+        // All checks passed
         self.memory.consecutive_rejections = 0;
-        Arbitration::Approved(intent.clone())
+        match clamp_reason {
+            Some(reason) => Arbitration::Clamped {
+                command: effective,
+                reason,
+            },
+            None => Arbitration::Approved(effective),
+        }
+    }
+
+    /// Rejection helper: uniform consecutive-rejection accounting.
+    /// Every rejection path goes through here — no exceptions.
+    fn reject(&mut self, reason: &str) -> Arbitration {
+        self.memory.consecutive_rejections += 1;
+        Arbitration::Rejected(reason.to_string())
+    }
+
+    fn reject_owned(&mut self, reason: String) -> Arbitration {
+        self.memory.consecutive_rejections += 1;
+        Arbitration::Rejected(reason)
     }
 
     /// Effective autonomy = min(dial, what current conditions allow).
@@ -189,8 +213,9 @@ impl SafetyEnvelope {
         None
     }
 
-    /// Check hard bounds from vessel.toml — absolute limits.
-    fn check_hard_bounds(&self, intent: &Intent) -> Option<Intent> {
+    /// Clamp to hard bounds from vessel.toml — absolute limits.
+    /// Returns Some(clamped) only if something actually changed.
+    fn clamp_hard_bounds(&self, intent: &Intent) -> Option<Intent> {
         let mut clamped = intent.clone();
 
         // Hard rudder limit (±max_rudder_deg)
@@ -226,27 +251,29 @@ impl SafetyEnvelope {
     }
 
     /// Check rate limits — prevent oscillation and runaway commands.
-    fn check_rate_limits(&mut self, intent: &Intent) -> Option<String> {
-        let now = now_ms();
-        let time_since_last_command = now.saturating_sub(self.memory.last_command_ms);
+    ///
+    /// `now_ms` is the STATE's timestamp (last event time), passed in by the
+    /// caller — this function must stay pure for replay (A2).
+    fn check_rate_limits(&mut self, intent: &Intent, now_ms: u64) -> Option<String> {
+        let time_since_last_command = now_ms.saturating_sub(self.memory.last_command_ms);
 
-        // Minimum 200ms between commands (5Hz max rate)
-        const MIN_COMMAND_INTERVAL_MS: u64 = 200;
+        // Minimum interval between commands (from vessel.toml)
+        let min_interval = self.limits.min_command_interval_ms;
 
-        if time_since_last_command < MIN_COMMAND_INTERVAL_MS {
+        if self.memory.last_command_ms > 0 && time_since_last_command < min_interval {
             return Some(format!(
                 "rate limit: only {}ms since last command (min {}ms)",
-                time_since_last_command, MIN_COMMAND_INTERVAL_MS
+                time_since_last_command, min_interval
             ));
         }
 
-        // Check rudder rate limit (max_throttle_step_pct degrees per command)
+        // Check rudder rate limit (max degrees per command, from vessel.toml)
         if let (Some(last), Some(requested)) = (
             self.memory.last_rudder_deg,
             intent.requested_rudder_deg
         ) {
             let delta = (requested - last).abs();
-            let max_delta = 15.0; // Max 15 degrees per command
+            let max_delta = self.limits.max_rudder_step_deg;
 
             if delta > max_delta {
                 return Some(format!(
@@ -320,7 +347,7 @@ impl SafetyEnvelope {
             state.nav.swing_rate_dps,
             intent.requested_rudder_deg
         ) {
-            if swing.abs() > 20.0 && rudder_cmd.abs() > 5.0 {
+            if swing.abs() > self.limits.max_swing_dps && rudder_cmd.abs() > 5.0 {
                 return Some(format!(
                     "compass swing guard: swing rate {:.1}°/sec exceeds threshold — \
                      rudder commands rejected (vessel in rough seas or compass failing)",
@@ -383,10 +410,13 @@ impl SafetyEnvelope {
     }
 
     /// Update memory with the last command (for rate limiting).
-    pub fn update_command_memory(&mut self, rudder: Option<f32>, throttle: Option<f32>) {
+    ///
+    /// `ts_ms` is the STATE's timestamp at command time — passed in by the
+    /// kernel so rate limiting stays deterministic under replay (A2).
+    pub fn update_command_memory(&mut self, rudder: Option<f32>, throttle: Option<f32>, ts_ms: u64) {
         self.memory.last_rudder_deg = rudder;
         self.memory.last_throttle_pct = throttle;
-        self.memory.last_command_ms = now_ms();
+        self.memory.last_command_ms = ts_ms;
     }
 
     /// Get consecutive rejection count (for detecting failing playbooks).
@@ -425,6 +455,9 @@ mod tests {
             watchdog_heartbeat_ms: 300,
             watchdog_miss_threshold: 3,
             shoaling_reject_m_per_min: 2.0,
+            min_command_interval_ms: 200,
+            max_rudder_step_deg: 15.0,
+            max_swing_dps: 20.0,
         }
     }
 
@@ -443,13 +476,16 @@ mod tests {
         propulsion.rpm = Some(1200);
         propulsion.engine_health = SensorHealth::fresh_now();
 
+        let mut human = HumanState::default();
+        human.dial = AutonomyLevel::Autopilot; // Coach/Log reject actuation — tests need actuation level
+
         VesselState {
             tick: 1,
             timestamp_ms: now_ms(),
             nav,
             propulsion,
             environment: EnvironmentState::default(),
-            human: HumanState::default(),
+            human,
             degraded: None,
             state_hash: String::new(),
         }
@@ -457,7 +493,7 @@ mod tests {
 
     #[test]
     fn test_human_override_rejects_all() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
         let mut state = make_test_state();
         state.human.override_active = true;
 
@@ -497,7 +533,7 @@ mod tests {
 
     #[test]
     fn test_stale_gps_rejects_steering() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
         let mut state = make_test_state();
         state.nav.gps_health.stale = true;
 
@@ -517,7 +553,7 @@ mod tests {
 
     #[test]
     fn test_min_speed_guard() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
         let mut state = make_test_state();
         state.nav.sog_kn = Some(1.5); // Below min speed
 
@@ -537,7 +573,7 @@ mod tests {
 
     #[test]
     fn test_rudder_clamp() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
         let state = make_test_state();
 
         let intent = Intent {
@@ -598,7 +634,7 @@ mod tests {
 
     #[test]
     fn test_effective_autonomy_degraded() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
         let mut state = make_test_state();
         state.degraded = Some("GPS failed".to_string());
 
@@ -611,7 +647,7 @@ mod tests {
 
     #[test]
     fn test_to_verdict() {
-        let envelope = SafetyEnvelope::new(make_test_limits());
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
 
         let intent_id = Ulid::new();
         let intent = Intent {
@@ -626,5 +662,49 @@ mod tests {
         assert_eq!(verdict.outcome, VerdictOutcome::Approved);
         assert!(verdict.final_command.is_some());
         assert!(verdict.reason.is_empty());
+    }
+
+    /// REGRESSION: dial at Coach must NEVER actuate (docs/09). An earlier
+    /// implementation noted "treat Coach as suggest only" in a comment but
+    /// fell through to approval — dial 1 behaved like dial 3. This test is
+    /// the tripwire.
+    #[test]
+    fn test_coach_dial_never_actuates() {
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
+        let mut state = make_test_state();
+        state.human.dial = AutonomyLevel::Coach;
+
+        let intent = Intent {
+            requested_rudder_deg: Some(5.0),
+            requested_throttle_pct: Some(25.0),
+            horizon_s: 1.0,
+        };
+
+        let arb = envelope.arbitrate(&intent, &state);
+        assert!(matches!(arb, Arbitration::Rejected(_)));
+        if let Arbitration::Rejected(reason) = arb {
+            assert!(reason.contains("Coach"));
+        }
+    }
+
+    /// REGRESSION: a clamped command must still pass rate limits and
+    /// context guards. Clamping bounds magnitude only.
+    #[test]
+    fn test_clamped_command_still_checked() {
+        let mut envelope = SafetyEnvelope::new(make_test_limits());
+        let mut state = make_test_state();
+        state.nav.sog_kn = Some(1.0); // below min autopilot speed
+
+        // Rudder 25° exceeds hard bound (clamped to 15°) AND the vessel is
+        // too slow for steering — the clamped command must still be rejected
+        // by the context guard, not approved as Clamped.
+        let intent = Intent {
+            requested_rudder_deg: Some(25.0),
+            requested_throttle_pct: None,
+            horizon_s: 1.0,
+        };
+
+        let arb = envelope.arbitrate(&intent, &state);
+        assert!(matches!(arb, Arbitration::Rejected(_)));
     }
 }

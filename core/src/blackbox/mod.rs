@@ -130,42 +130,49 @@ impl BlackBox {
             });
         }
 
-        // Read the last line to get the chain head
-        let last_line = Self::read_last_line(&log_path)?;
+        // Resume: walk the file once — adopt the last line's hash as chain
+        // head and the line count as the sequence number. If the tail is
+        // corrupted, start a discontinuity: empty hash, FIRST new entry
+        // records the gap explicitly — gaps are data, not errors.
+        let (line_count, last_line) = Self::read_tail(&log_path)?;
 
+        let mut last_hash = Vec::new();
         if let Some(line) = last_line {
             // Parse: prev_hash|curr_hash|json
             let parts: Vec<&str> = line.split('|').collect();
             if parts.len() >= 2 {
-                let curr_hash = parts[1].trim();
-                self.last_hash = hex::decode(curr_hash)
+                last_hash = hex::decode(parts[1].trim())
                     .map_err(|e| BlackBoxError::Serialization(format!("Invalid hex: {}", e)))?;
             }
         }
 
         Ok(Self {
-            last_hash: Vec::new(),
+            last_hash,
             log_path,
-            seq: 0,
+            seq: line_count,
         })
     }
 
-    /// Read the last line from a log file.
+    /// Read the line count and last line from a log file.
     ///
-    /// Used to resume the chain after restart.
-    fn read_last_line(path: &PathBuf) -> Result<Option<String>, BlackBoxError> {
+    /// Used to resume the chain after restart (hash head + sequence).
+    fn read_tail(path: &PathBuf) -> Result<(u64, Option<String>), BlackBoxError> {
         use std::io::{BufRead, BufReader};
 
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let mut lines = reader.lines();
 
+        let mut count = 0u64;
         let mut last_line = None;
-        while let Some(Ok(line)) = lines.next() {
-            last_line = Some(line);
+        for line in reader.lines() {
+            let line = line?;
+            if !line.trim().is_empty() {
+                count += 1;
+                last_line = Some(line);
+            }
         }
 
-        Ok(last_line)
+        Ok((count, last_line))
     }
 
     /// Append one entry to the black box.
@@ -226,6 +233,8 @@ impl BlackBox {
     ///
     /// Returns: verification result with validity status and any corruption details
     pub fn verify_range(&self, from_seq: u64, to_seq: u64) -> Result<ChainVerification, BlackBoxError> {
+        use std::io::BufRead;
+
         // Read the entire file
         let file = File::open(&self.log_path)?;
         let reader = std::io::BufReader::new(file);
@@ -254,7 +263,7 @@ impl BlackBox {
                     ));
                 }
 
-                let stated_prev = parts[0].trim();
+                let _stated_prev = parts[0].trim();
                 let stated_curr = parts[1].trim();
                 let json_data = parts[2..].join("|"); // Rejoin in case json contains |
 
@@ -305,6 +314,8 @@ impl BlackBox {
     ///
     /// Used for replay and audit. Returns entries in sequence order.
     pub fn read_range(&self, from_seq: u64, to_seq: u64) -> Result<Vec<BlackBoxEntry>, BlackBoxError> {
+        use std::io::BufRead;
+
         let file = File::open(&self.log_path)?;
         let reader = std::io::BufReader::new(file);
 

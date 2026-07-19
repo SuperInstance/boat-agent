@@ -30,3 +30,6 @@ tokio-util = "0.7"
 [features]
 default = []
 replay = []   # run kernel against recorded black-box corpora (no hardware)
+
+[dev-dependencies]
+tempfile = "3"

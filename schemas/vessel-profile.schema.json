@@ -22,7 +22,8 @@
       "required": [
         "max_rudder_deg", "min_autopilot_speed_kn", "max_trolling_rpm",
         "max_throttle_step_pct", "trolling_throttle_ceiling_pct",
-        "watchdog_heartbeat_ms", "watchdog_miss_threshold", "shoaling_reject_m_per_min"
+        "watchdog_heartbeat_ms", "watchdog_miss_threshold", "shoaling_reject_m_per_min",
+        "min_command_interval_ms", "max_rudder_step_deg", "max_swing_dps"
       ],
       "properties": {
         "max_rudder_deg": { "type": "number", "exclusiveMinimum": 0, "maximum": 35 },
@@ -32,7 +33,10 @@
         "trolling_throttle_ceiling_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
         "watchdog_heartbeat_ms": { "type": "integer", "minimum": 100, "maximum": 1000 },
         "watchdog_miss_threshold": { "type": "integer", "minimum": 1, "maximum": 10 },
-        "shoaling_reject_m_per_min": { "type": "number", "exclusiveMinimum": 0 }
+        "shoaling_reject_m_per_min": { "type": "number", "exclusiveMinimum": 0 },
+        "min_command_interval_ms": { "type": "integer", "minimum": 0, "maximum": 5000 },
+        "max_rudder_step_deg": { "type": "number", "exclusiveMinimum": 0 },
+        "max_swing_dps": { "type": "number", "exclusiveMinimum": 0 }
       }
     },
     "drivers": {

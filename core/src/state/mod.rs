@@ -58,7 +58,8 @@ impl Default for SensorHealth {
 }
 
 impl SensorHealth {
-    /// Create fresh health from current timestamp.
+    /// Create fresh health from current timestamp. TEST/BOOT HELPER ONLY —
+    /// never call this from the reducer (wall clock breaks replay purity).
     pub fn fresh_now() -> Self {
         Self {
             last_update_ms: now_ms(),
@@ -67,11 +68,12 @@ impl SensorHealth {
         }
     }
 
-    /// Update health and check staleness based on age threshold.
-    pub fn update(&mut self, age_threshold_ms: u64) {
-        self.last_update_ms = now_ms();
-        let age = now_ms().saturating_sub(self.last_update_ms);
-        self.stale = age > age_threshold_ms;
+    /// Update health from an EVENT timestamp and check staleness against
+    /// the state's own clock. The reducer calls only this form — event
+    /// timestamps are the only time source allowed inside reduce() (A2).
+    pub fn update_at(&mut self, event_ts_ms: u64, state_now_ms: u64, age_threshold_ms: u64) {
+        self.last_update_ms = event_ts_ms;
+        self.stale = state_now_ms.saturating_sub(event_ts_ms) > age_threshold_ms;
     }
 
     /// Mark sensor as degraded (e.g., high HDOP, erratic compass).
@@ -264,6 +266,9 @@ pub struct VesselState {
 
 impl Default for VesselState {
     fn default() -> Self {
+        // NOTE: hash left empty here — computing it via Self::default()
+        // recursed infinitely (found in review). Use genesis() instead,
+        // which computes the hash exactly once.
         Self {
             tick: 0,
             timestamp_ms: 0,
@@ -272,7 +277,7 @@ impl Default for VesselState {
             environment: EnvironmentState::default(),
             human: HumanState::default(),
             degraded: None,
-            state_hash: Self::hash_self(&Self::default()),
+            state_hash: String::new(),
         }
     }
 }
@@ -281,10 +286,13 @@ impl VesselState {
     /// Create the genesis state — all sensors empty, dial at Coach.
     ///
     /// This is the starting point for every boot and every replay.
+    /// timestamp_ms is 0 (deterministic): the state's clock only advances
+    /// via event timestamps inside reduce(). Wall clock never enters here —
+    /// two genesis states must hash identically, or replay anchors drift.
     pub fn genesis() -> Self {
         let state = Self {
             tick: 0,
-            timestamp_ms: now_ms(),
+            timestamp_ms: 0,
             nav: NavigationState::default(),
             propulsion: PropulsionState::default(),
             environment: EnvironmentState::default(),
@@ -357,14 +365,14 @@ impl VesselState {
     ///
     /// GPS is authoritative for position and SOG/COG. We don't fuse
     /// this with anything else — it's the ground truth for navigation.
-    fn apply_gps(&mut self, payload: &GpsFix, _ts: u64) {
+    fn apply_gps(&mut self, payload: &GpsFix, ts: u64) {
         self.nav.lat = Some(payload.lat);
         self.nav.lon = Some(payload.lon);
         self.nav.sog_kn = Some(payload.sog_kn);
         self.nav.cog_deg = Some(payload.cog_deg);
 
-        // Update health and check for degradation based on HDOP
-        self.nav.gps_health.update(5000); // 5s staleness threshold
+        // Update health from the EVENT timestamp (never wall clock — A2)
+        self.nav.gps_health.update_at(ts, self.timestamp_ms, 5000); // 5s staleness threshold
 
         // HDOP > 5.0 indicates poor geometry — mark degraded
         if payload.hdop > 5.0 {
@@ -376,12 +384,12 @@ impl VesselState {
     ///
     /// Heading is fused from magnetic compass. Gyro fallback would
     /// go here when we have that sensor.
-    fn apply_compass(&mut self, payload: &CompassHeading, _ts: u64) {
+    fn apply_compass(&mut self, payload: &CompassHeading, ts: u64) {
         self.nav.heading_deg = Some(payload.heading_deg);
         self.nav.swing_rate_dps = Some(payload.swing_rate_dps);
 
         // Update health
-        self.nav.compass_health.update(2000); // 2s staleness threshold
+        self.nav.compass_health.update_at(ts, self.timestamp_ms, 2000); // 2s staleness threshold
 
         // Excessive swing indicates compass issues or rough seas
         if payload.swing_rate_dps.abs() > 30.0 {
@@ -393,23 +401,23 @@ impl VesselState {
     ///
     /// Depth is critical for shoaling detection. We maintain a history
     /// to compute depth trend (meters per minute).
-    fn apply_depth(&mut self, payload: &DepthSounder, _ts: u64) {
+    fn apply_depth(&mut self, payload: &DepthSounder, ts: u64) {
         self.nav.depth_m = Some(payload.depth_m);
         self.nav.bottom_hardness = payload.bottom_hardness;
 
         // Update health
-        self.nav.depth_health.update(3000); // 3s staleness threshold
+        self.nav.depth_health.update_at(ts, self.timestamp_ms, 3000); // 3s staleness threshold
     }
 
     /// Apply engine RPM report to propulsion state.
     ///
     /// Comes from N2K PGN 127488 or legacy analog tachometer.
-    fn apply_engine(&mut self, payload: &EngineRpm, _ts: u64) {
+    fn apply_engine(&mut self, payload: &EngineRpm, ts: u64) {
         self.propulsion.rpm = Some(payload.rpm);
         self.propulsion.throttle_pct = Some(payload.throttle_pct);
 
         // Update health
-        self.propulsion.engine_health.update(1000); // 1s staleness threshold
+        self.propulsion.engine_health.update_at(ts, self.timestamp_ms, 1000); // 1s staleness threshold
     }
 
     /// Apply wind sensor reading to environment state.
@@ -465,7 +473,10 @@ impl VesselState {
     /// This is how the system knows when to stop trusting a sensor.
     /// The envelope reads these flags before approving any intent.
     fn update_staleness(&mut self) {
-        let now = now_ms();
+        // The state's OWN clock (last event timestamp) is the reference —
+        // never wall clock. This is what makes replay deterministic: the
+        // same event stream produces the same staleness flags.
+        let now = self.timestamp_ms;
 
         // Check GPS staleness (5s threshold)
         self.nav.gps_health.stale = now.saturating_sub(self.nav.gps_health.last_update_ms) > 5000;
@@ -698,7 +709,7 @@ mod tests {
         state.nav.lat = Some(45.5);
 
         // Snapshot should be unchanged
-        assert!(snapshot.get().lat.is_none());
+        assert!(snapshot.get().nav.lat.is_none());
     }
 
     #[test]

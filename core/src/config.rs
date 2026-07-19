@@ -35,12 +35,16 @@ pub struct EnvelopeLimits {
     pub watchdog_heartbeat_ms: u64,     // default 300 (legacy Insight-001)
     pub watchdog_miss_threshold: u32,   // default 3 (≈800–900 ms to trip)
     pub shoaling_reject_m_per_min: f32, // depth-trend guard
+    pub min_command_interval_ms: u64,   // default 200 — min ms between actuations
+    pub max_rudder_step_deg: f32,       // default 15.0 — max rudder delta per command
+    pub max_swing_dps: f32,             // default 20.0 — compass swing guard threshold
 }
 
 /// Capability grants per agent role (docs/10 §Capability model).
 /// Enforced at bus ingest — structural, not polite.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentGrants {
+    #[serde(default)]               // map key names the role; field optional
     pub role: String,                    // "operator" | "engineer" | ...
     pub may_emit: Vec<String>,           // kind globs: ["agent.shadow.*"]
     pub may_invoke: Vec<String>,         // boatctl command groups
@@ -62,10 +66,42 @@ impl VesselProfile {
         Ok(profile)
     }
 
-    /// Cross-field validation beyond serde: sane limit relationships
-    /// (step ≤ ceiling, heartbeat < trip threshold, …), referenced
-    /// drivers exist, no playbook granted write access to envelope limits.
+    /// Cross-field validation beyond serde: sane limit relationships,
+    /// and no playbook/agent granted write access to envelope limits.
+    /// A profile that fails validation must never boot — fail LOUD here,
+    /// at the dock, not at sea.
     fn validate(&self) -> anyhow::Result<()> {
-        todo!()
+        let e = &self.envelope;
+        anyhow::ensure!(
+            e.max_throttle_step_pct <= e.trolling_throttle_ceiling_pct,
+            "envelope: max_throttle_step_pct ({}) exceeds trolling ceiling ({})",
+            e.max_throttle_step_pct,
+            e.trolling_throttle_ceiling_pct
+        );
+        anyhow::ensure!(
+            e.max_rudder_step_deg <= e.max_rudder_deg,
+            "envelope: max_rudder_step_deg ({}) exceeds max_rudder_deg ({})",
+            e.max_rudder_step_deg,
+            e.max_rudder_deg
+        );
+        anyhow::ensure!(
+            e.watchdog_miss_threshold >= 1,
+            "envelope: watchdog_miss_threshold must be >= 1"
+        );
+        anyhow::ensure!(
+            !self.vessel.id.is_empty() && !self.vessel.data_dir.is_empty(),
+            "vessel: id and data_dir are required"
+        );
+        // Analyst must never hold a control.* grant, even if a profile
+        // tries to give it one (docs/10 — structural, not polite).
+        for (name, grants) in &self.agents {
+            if name == "analyst" {
+                anyhow::ensure!(
+                    !grants.may_emit.iter().any(|g| g.starts_with("control.")),
+                    "agents.analyst: control.* emission grants are forbidden"
+                );
+            }
+        }
+        Ok(())
     }
 }

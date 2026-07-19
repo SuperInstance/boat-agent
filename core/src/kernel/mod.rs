@@ -42,7 +42,7 @@ use crate::blackbox::{BlackBox, BlackBoxEntry};
 use crate::bus::{Event, LaneRouter};
 use crate::bus::events::{Intent, Verdict, AutonomyLevel, VerdictOutcome};
 use crate::config::VesselProfile;
-use crate::envelope::{SafetyEnvelope, Arbitration};
+use crate::envelope::SafetyEnvelope;
 use crate::state::{VesselState, StateSnapshot};
 use anyhow::Result;
 use std::time::{Duration, Instant};
@@ -234,18 +234,27 @@ impl Kernel {
         let intent = self.evaluate_playbooks(&targets).await;
 
         // Step 4: Envelope arbitration — the one door
-        let verdict = if let Some(intent) = intent {
-            let arbitration = self.envelope.arbitrate(&intent, &self.state);
-            Some(self.envelope.to_verdict(intent.id, arbitration))
+        let verdict = if let Some(ref intent) = intent {
+            let arbitration = self.envelope.arbitrate(intent, &self.state);
+            // Intent carries no id (payload-only type); the kernel assigns
+            // the correlation id when creating the verdict.
+            Some(self.envelope.to_verdict(ulid::Ulid::new(), arbitration))
         } else {
             None
         };
 
-        // Step 5: Actuator flush (if approved)
+        // Step 5: Actuator flush (if approved or clamped to a safe command)
         if let Some(ref verdict) = verdict {
-            if verdict.outcome == VerdictOutcome::Approved {
+            if matches!(verdict.outcome, VerdictOutcome::Approved | VerdictOutcome::Clamped) {
                 if let Some(ref command) = verdict.final_command {
                     self.flush_actuators(command).await?;
+                    // Feed the rate limiter — without this, envelope rate
+                    // limits are dead code. Uses the STATE's clock (A2).
+                    self.envelope.update_command_memory(
+                        command.requested_rudder_deg,
+                        command.requested_throttle_pct,
+                        self.state.timestamp_ms,
+                    );
                 }
             }
         }
@@ -336,7 +345,7 @@ impl Kernel {
     /// This calls the playbook host with the current snapshot and targets.
     /// Playbooks run with a timeout — if they exceed it, we hold the last
     /// safe command and count the miss.
-    async fn evaluate_playbooks(&mut self, targets: &serde_json::Value) -> Option<Intent> {
+    async fn evaluate_playbooks(&mut self, _targets: &serde_json::Value) -> Option<Intent> {
         // TODO: Integrate playbook host
         // For now, return None (no intent from playbooks)
 
@@ -386,8 +395,10 @@ impl Kernel {
             tick: self.state.tick,
             state_hash: self.state.state_hash.clone(),
             dial_level: self.state.human.dial as u8,
+            // Intent payloads carry no provenance (that lives on bus Events).
+            // Until the playbook host lands, actuating intents are kernel-sourced.
             actor: intent
-                .map(|i| i.provenance.authority.clone())
+                .map(|_| "playbook:pending-integration".to_string())
                 .unwrap_or_else(|| "none".to_string()),
             intent_json: intent.map(|i| serde_json::to_string(i).unwrap_or_default()),
             verdict_json: verdict.map(|v| serde_json::to_string(v).unwrap_or_default()),
@@ -496,6 +507,9 @@ mod tests {
                 watchdog_heartbeat_ms: 300,
                 watchdog_miss_threshold: 3,
                 shoaling_reject_m_per_min: 2.0,
+                min_command_interval_ms: 200,
+                max_rudder_step_deg: 15.0,
+                max_swing_dps: 20.0,
             },
             drivers: HashMap::new(),
             agents: HashMap::new(),
@@ -504,17 +518,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_kernel_bootstrap() {
+    /// Bootstrap into a temp dir — never touch fixed paths in tests.
+    fn boot_test_kernel() -> (tempfile::TempDir, Kernel) {
+        let dir = tempfile::TempDir::new().unwrap();
         let config = KernelConfig {
             profile: make_test_profile(),
-            data_dir: PathBuf::from("/tmp/test_kernel"),
+            data_dir: dir.path().to_path_buf(),
         };
+        let kernel = Kernel::bootstrap(config).unwrap();
+        (dir, kernel)
+    }
 
-        let kernel = Kernel::bootstrap(config);
-
-        assert!(kernel.is_ok());
-        let kernel = kernel.unwrap();
+    #[test]
+    fn test_kernel_bootstrap() {
+        let (_dir, kernel) = boot_test_kernel();
 
         assert_eq!(kernel.tick_count(), 0);
         assert_eq!(kernel.state.tick, 0);
@@ -524,12 +541,7 @@ mod tests {
 
     #[test]
     fn test_effective_autonomy() {
-        let config = KernelConfig {
-            profile: make_test_profile(),
-            data_dir: PathBuf::from("/tmp/test_kernel"),
-        };
-
-        let kernel = Kernel::bootstrap(config).unwrap();
+        let (_dir, kernel) = boot_test_kernel();
 
         // At startup, should be Coach (default)
         assert_eq!(kernel.effective_autonomy(), AutonomyLevel::Coach);
@@ -537,12 +549,7 @@ mod tests {
 
     #[test]
     fn test_shutdown() {
-        let config = KernelConfig {
-            profile: make_test_profile(),
-            data_dir: PathBuf::from("/tmp/test_kernel"),
-        };
-
-        let mut kernel = Kernel::bootstrap(config).unwrap();
+        let (_dir, mut kernel) = boot_test_kernel();
         kernel.shutdown();
 
         assert!(!kernel.is_running);

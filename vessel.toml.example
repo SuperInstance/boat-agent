@@ -27,6 +27,9 @@ trolling_throttle_ceiling_pct = 40.0
 watchdog_heartbeat_ms = 300        # legacy Insight-001: 800 was too slow
 watchdog_miss_threshold = 3        # ~900ms to trip → relay opens, buzzer
 shoaling_reject_m_per_min = 2.0    # depth-trend guard
+min_command_interval_ms = 200      # min ms between actuations (5Hz max rate)
+max_rudder_step_deg = 15.0         # max rudder change per command
+max_swing_dps = 20.0               # compass swing guard (rough seas/failing compass)
 
 # ─────────────────────────────────────────────────────────────────
 # DRIVERS — auto-discovery fills these in; captain confirms one tap.

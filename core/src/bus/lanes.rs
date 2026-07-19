@@ -43,10 +43,10 @@ pub struct QuarantineLog {
 }
 
 #[derive(Debug, Clone)]
-struct QuarantineEntry {
-    timestamp_ms: u64,
-    error: IngestError,
-    event_summary: String,
+pub struct QuarantineEntry {
+    pub timestamp_ms: u64,
+    pub error: IngestError,
+    pub event_summary: String,
 }
 
 impl QuarantineLog {
@@ -247,7 +247,7 @@ impl LaneRouter {
 
         if event.timestamp_ms > now + max_future_ms {
             return Err(IngestError::SchemaViolation {
-                kind: format!("{:?}", event.kind),
+                kind: event.kind.kind_str().to_string(),
                 reason: format!("timestamp {} is more than 5s in the future", event.timestamp_ms),
             });
         }
@@ -264,7 +264,7 @@ impl LaneRouter {
         let actor_key = match &event.source.actor {
             super::Actor::System => return Ok(()), // System can emit anything
             super::Actor::Human => return Ok(()),  // Human can emit anything
-            super::Agent(role) => format!("agent:{}", role.as_ref()),
+            super::Actor::Agent(role) => format!("agent:{}", role.as_ref()),
         };
 
         // Get the allowed kind globs for this role
@@ -273,22 +273,23 @@ impl LaneRouter {
             None => {
                 return Err(IngestError::CapabilityDenied {
                     actor: actor_key,
-                    kind: format!("{:?}", event.kind),
+                    kind: event.kind.kind_str().to_string(),
                 });
             }
         };
 
-        // Check if any of the allowed globs match this event kind
-        let kind_str = format!("{:?}", event.kind);
+        // Check if any of the allowed globs match this event kind.
+        // kind_str() is the canonical dotted identity — never Debug output.
+        let kind_str = event.kind.kind_str();
         for pattern in allowed {
-            if Self::glob_match(pattern, &kind_str) {
+            if Self::glob_match(pattern, kind_str) {
                 return Ok(());
             }
         }
 
         Err(IngestError::CapabilityDenied {
             actor: actor_key,
-            kind: kind_str,
+            kind: kind_str.to_string(),
         })
     }
 
@@ -334,8 +335,10 @@ impl LaneRouter {
                 let _ = self.critical_tx.send(event);
             }
             Lane::Telemetry => {
-                // Telemetry: coalesce by (kind, producer)
-                let key = (format!("{:?}", event.kind), event.source.module.clone());
+                // Telemetry: coalesce by (kind, producer). kind_str() gives the
+                // payload-independent kind identity — using Debug format here
+                // would include payload values and coalescing would never fire.
+                let key = (event.kind.kind_str().to_string(), event.source.module.clone());
                 self.telemetry_coalesce.insert(key, event);
 
                 // If we've exceeded capacity, drop oldest entries (LRU eviction)
@@ -343,8 +346,8 @@ impl LaneRouter {
                     // Find and remove the oldest entry
                     // TODO: Track insertion order for proper LRU
                     // For now, just remove one arbitrary entry
-                    if let Some(key) = self.telemetry_coalesce.keys().next() {
-                        self.telemetry_coalesce.remove(key);
+                    if let Some(key) = self.telemetry_coalesce.keys().next().cloned() {
+                        self.telemetry_coalesce.remove(&key);
                     }
                 }
             }
@@ -447,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_critical_lane_privilege() {
-        let router = LaneRouter::new(std::path::PathBuf::from("/tmp/test"));
+        let mut router = LaneRouter::new(std::path::Path::new("/tmp/test"));
 
         // Driver may emit critical
         let event = make_test_event(
@@ -479,10 +482,10 @@ mod tests {
 
     #[test]
     fn test_capability_enforcement() {
-        let mut router = LaneRouter::new(std::path::PathBuf::from("/tmp/test"));
+        let mut router = LaneRouter::new(std::path::Path::new("/tmp/test"));
 
         // Analyst cannot emit control intents
-        let event = make_test_event(
+        let mut event = make_test_event(
             EventKind::Intent(crate::bus::events::Intent {
                 requested_rudder_deg: None,
                 requested_throttle_pct: None,
@@ -501,7 +504,7 @@ mod tests {
 
     #[test]
     fn test_telemetry_coalescing() {
-        let mut router = LaneRouter::new(std::path::PathBuf::from("/tmp/test"));
+        let mut router = LaneRouter::new(std::path::Path::new("/tmp/test"));
 
         // Emit 5 GPS events from the same driver
         for i in 0..5 {
@@ -534,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_narrative_drop_oldest() {
-        let mut router = LaneRouter::new(std::path::PathBuf::from("/tmp/test"));
+        let mut router = LaneRouter::new(std::path::Path::new("/tmp/test"));
 
         // Fill narrative buffer beyond capacity
         for i in 0..(NARRATIVE_CAPACITY + 100) {

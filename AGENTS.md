@@ -65,7 +65,8 @@ boat-agent/
 │   ├── 11_MIGRATION_MAP.md              ← legacy phases → new architecture
 │   ├── 12_DESIGN_RATIONALE.md           ← why each choice; overturn conditions
 │   ├── 13_OPEN_QUESTIONS.md             ← architecture-level open work
-│   └── 14_MODULE_BOUNTIES.md            ← claimable modules + generalization tracks
+│   ├── 14_MODULE_BOUNTIES.md            ← claimable modules + generalization tracks
+│   └── 15_CODE_REVIEW.md                ← review log: findings, fixes, open weaknesses
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
 │       ├── kernel/                scheduler, tick, module lifecycle
@@ -114,3 +115,8 @@ boat-agent/
 3. The change is expressible as bus events and agent-API commands.
 4. The black box would record enough to reconstruct *why* the system acted.
 5. If the change touches actuation: the stage-gate in `docs/07` was followed.
+6. **Run the tests. Actually run them.** `cargo test` (and `cargo build`
+   for the binary path) must pass in your session before you claim
+   anything is "implemented" or "tested". A verification claim without a
+   run is fake confidence — the one sin this repo ranks worst (docs/06).
+   See docs/15 REVIEW-001 for what happens otherwise.

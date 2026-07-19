@@ -53,6 +53,19 @@ pub enum AgentRole {
     Fleet,
 }
 
+impl AgentRole {
+    /// Stable string form for capability keys and provenance ("operator", ...).
+    pub fn as_ref(&self) -> &'static str {
+        match self {
+            AgentRole::Operator => "operator",
+            AgentRole::Engineer => "engineer",
+            AgentRole::Analyst => "analyst",
+            AgentRole::Auditor => "auditor",
+            AgentRole::Fleet => "fleet",
+        }
+    }
+}
+
 /// Provenance turns the log into a graph (docs/04 axiom A7, docs/06 §Rules).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Provenance {
@@ -92,7 +105,7 @@ impl Event {
 }
 
 /// Errors at ingest. Structured, machine-actionable (docs/04 axiom A1).
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum IngestError {
     #[error("lane violation: {module} may not emit on critical lane")]
     LaneViolation { module: String },

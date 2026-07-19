@@ -62,6 +62,39 @@ pub enum EventKind {
     DegradedMode(DegradedMode), // critical lane
 }
 
+impl EventKind {
+    /// The dotted taxonomy string (docs/06) — "control.intent", "sensor.gps.fix".
+    ///
+    /// This is THE canonical identity of a kind. Capability globs and
+    /// telemetry coalescing keys MUST use this — never `Debug` formatting,
+    /// which includes payload values and breaks both.
+    pub fn kind_str(&self) -> &'static str {
+        match self {
+            EventKind::GpsFix(_) => "sensor.gps.fix",
+            EventKind::CompassHeading(_) => "sensor.compass.heading",
+            EventKind::DepthSounder(_) => "sensor.depth.sounder",
+            EventKind::EngineRpm(_) => "sensor.engine.rpm",
+            EventKind::WindApparent(_) => "sensor.wind.apparent",
+            EventKind::RudderAngle(_) => "sensor.rudder.angle",
+            EventKind::ThermalReading(_) => "sensor.thermal.reading",
+            EventKind::JogLeverMove(_) => "human.jog_lever.move",
+            EventKind::DialSet(_) => "human.dial.set",
+            EventKind::VoiceTranscript(_) => "human.voice.transcript",
+            EventKind::EscalationAnswer(_) => "human.escalation.answer",
+            EventKind::CatchLog(_) => "human.catch.log",
+            EventKind::Intent(_) => "control.intent",
+            EventKind::Verdict(_) => "control.verdict",
+            EventKind::WatchdogTrip(_) => "control.watchdog.trip",
+            EventKind::PlaybookProposal(_) => "agent.proposal.playbook",
+            EventKind::EscalationRequest(_) => "agent.escalation.request",
+            EventKind::ShadowDelta(_) => "agent.shadow.delta",
+            EventKind::AuditResult(_) => "agent.audit.result",
+            EventKind::TickHeartbeat(_) => "system.tick.heartbeat",
+            EventKind::DegradedMode(_) => "system.degraded_mode",
+        }
+    }
+}
+
 // ── Sensing payloads ─────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,7 +153,7 @@ pub struct JogLeverMove {
 }
 
 /// The autonomy dial. Ceiling, not floor (docs/09).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialSet {
     pub level: AutonomyLevel,
     pub by_whom: String,
@@ -178,7 +211,7 @@ pub struct Verdict {
     pub final_command: Option<Intent>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum VerdictOutcome {
     Approved,
