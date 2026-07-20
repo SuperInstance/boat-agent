@@ -68,7 +68,7 @@ same work item.
 - Bonus from the crew: Telegram briefing delivery (`cascade/notify.py`, hermes) and verified USB backup (`scripts/manifest_backup.py`, crush — silent-rot detection, week-3 deliverable landed early)
 - **Checkpoint:** reboot the laptop mid-capture; daemon auto-restarts; zero frames lost; every frame hash-verified in meta.db. → *reboot drill pending; everything short of it verified*
 
-### Week 2 — Visibility: the scrubber MVP
+### Week 2 — Visibility: the scrubber MVP  ✅ BUILT 2026-07-19
 - Design: **docs/22_SCRUBBER_DESIGN.md** (mini-agent ideation, adjudicated):
   local web UI over loopback reading the twin directly; API-as-contract
   so any future shell (Tauri, phone) is a client.
@@ -76,6 +76,16 @@ same work item.
   direct-manipulation timeline, overlay layers, session state, ≥44px
   targets) + the "holy shit" highlight cursor (lands on the day's
   highest-novelty moment on first launch).
+- **Built (claude code):** `tzpro-agent/scrubber/` — stdlib HTTP server,
+  three endpoints, single-file JS app with variable-rate drag, event
+  tracks, keyboard fallback. 9 serve tests + UX checklist (mini-agent,
+  docs/research/SCRUBBER_UX_CHECKLIST.md).
+- **Review fixes (Kimi):** highlight graceful fallback chain (notes →
+  frames.novelty → latest-with-record → latest); raw-confidence % removed
+  from captions (docs/23 R1); stale-server test collision diagnosed;
+  perf verified ~210ms warm (<300ms budget).
+- **Checkpoint:** captain scrubs a 12-hour day in 2 minutes, unassisted.
+  → *pending first seat time; Part B smoke script ready in the checklist*
 - **Checkpoint:** captain scrubs a full 12-hour day in under 2 minutes,
   unassisted, and finds "that school at 14:30" without help.
 
