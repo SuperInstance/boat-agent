@@ -137,6 +137,16 @@ One fleet, four specialties, one event contract between them.
 
 ---
 
+## Standalone spin-outs (2026-07-19)
+
+The cascade daemon and the black-box mechanism have been generalized into
+their own repos: [perception-cascade](https://github.com/SuperInstance/perception-cascade)
+(tiered perception for any frame time-series — G-2 realized) and
+[provenance-log](https://github.com/SuperInstance/provenance-log)
+(the hash-chain audit crate — G-6 realized). This repo keeps its local
+copy of `cascade/` for the live vessel install; future development should
+target the standalone tool and vendor it here.
+
 **Cross-references:** bounties B-INT-1..5 in `docs/14`; G-1/G-2/G-3
 generalization tracks; Q-IO-1; legacy RQ-002 (answered with our own
 corpus), legacy Insight-005 (solved by tzpro's TCP bridge pattern).

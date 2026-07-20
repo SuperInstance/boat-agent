@@ -242,6 +242,13 @@ retrofitting the marine use onto it (proof it's truly general).
 
 ---
 
+## Standalone tools (spun out as their own repos)
+
+| Tool | Repo | Generalizes | Status |
+|------|------|-------------|--------|
+| **perception-cascade** | [SuperInstance/perception-cascade](https://github.com/SuperInstance/perception-cascade) | G-2/G-4: tiered perception loops (M1/M10/H1 + gaze) for ANY frame time-series; prompts are env config | Live — verified on marine echograms |
+| **provenance-log** | [SuperInstance/provenance-log](https://github.com/SuperInstance/provenance-log) | G-6: hash-chained append-only audit log as a crate | Live — 5/5 tests incl. tamper detection |
+
 ## Completed bounties
 
 *(none yet — the menu opened today)*
