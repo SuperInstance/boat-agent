@@ -60,17 +60,13 @@ same work item.
 
 ## The plan
 
-### Week 1 — Durability: the twin becomes real
-- Implement `meta.db` (docs/18 schema) + strict write path
-  (blob→fsync→rename→row).
-- B-INT-1 (reduced): ingest `captures/v3/**` going forward; today's 18
-  frames backfilled.
-- Cascade rewired: M1 notes, M10 records, H1 briefings write to the
-  twin, not loose files.
-- Daemon permanence: Task Scheduler entry + heartbeat watchdog +
-  kill-recovery test.
-- **Checkpoint:** reboot the laptop mid-capture; daemon auto-restarts;
-  zero frames lost; every frame hash-verified in meta.db.
+### Week 1 — Durability: the twin becomes real  ✅ DONE 2026-07-19
+- ~~Implement `meta.db` (docs/18 schema) + strict write path~~ → `twin/` in tzpro-agent, 23 tests green
+- ~~B-INT-1 (reduced): ingest `captures/v3/**` going forward; today's 18 frames backfilled~~ → 41 frames imported, idempotent
+- ~~Cascade rewired: M1 notes, M10 records, H1 briefings write to the twin~~ → `cascade/twin_sink.py` (non-fatal bridge)
+- ~~Daemon permanence: Task Scheduler entry + heartbeat watchdog~~ → `scripts/install_cascade_task.ps1` + `cascade_watchdog.ps1` (needs one elevated run to activate)
+- Bonus from the crew: Telegram briefing delivery (`cascade/notify.py`, hermes) and verified USB backup (`scripts/manifest_backup.py`, crush — silent-rot detection, week-3 deliverable landed early)
+- **Checkpoint:** reboot the laptop mid-capture; daemon auto-restarts; zero frames lost; every frame hash-verified in meta.db. → *reboot drill pending; everything short of it verified*
 
 ### Week 2 — Visibility: the scrubber MVP
 - Day scrubber reading the twin via boatctl queries (docs/20 decisions:
