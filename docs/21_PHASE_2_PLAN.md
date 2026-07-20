@@ -69,11 +69,13 @@ same work item.
 - **Checkpoint:** reboot the laptop mid-capture; daemon auto-restarts; zero frames lost; every frame hash-verified in meta.db. → *reboot drill pending; everything short of it verified*
 
 ### Week 2 — Visibility: the scrubber MVP
-- Day scrubber reading the twin via boatctl queries (docs/20 decisions:
+- Design: **docs/22_SCRUBBER_DESIGN.md** (mini-agent ideation, adjudicated):
+  local web UI over loopback reading the twin directly; API-as-contract
+  so any future shell (Tauri, phone) is a client.
+- Day scrubber reading the twin via the day API (docs/20 decisions:
   direct-manipulation timeline, overlay layers, session state, ≥44px
-  targets).
-- Tech: keep it the thinnest thing that renders — local web UI over
-  meta.db is acceptable; no new framework without a fight.
+  targets) + the "holy shit" highlight cursor (lands on the day's
+  highest-novelty moment on first launch).
 - **Checkpoint:** captain scrubs a full 12-hour day in under 2 minutes,
   unassisted, and finds "that school at 14:30" without help.
 

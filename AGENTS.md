@@ -72,7 +72,8 @@ boat-agent/
 │   ├── 18_DATA_TWIN_STORAGE.md          ← local twin: SQLite+CAS+Parquet, tiering, GC
 │   ├── 19_CLOUD_TWIN.md                 ← Cloudflare backup/free-analysis architecture
 │   ├── 20_GUI_AND_PRESETS.md            ← scrubber UX, preset tiers, command palette
-│   └── 21_PHASE_2_PLAN.md               ← ACTIVE PLAN: durability→visibility→backup→replay
+│   ├── 21_PHASE_2_PLAN.md               ← ACTIVE PLAN: durability→visibility→backup→replay
+│   └── 22_SCRUBBER_DESIGN.md            ← day scrubber MVP: architecture + build order
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
 │       ├── kernel/                scheduler, tick, module lifecycle
