@@ -1,6 +1,6 @@
 # boat-agent
 
-**A deckhand with perfect memory. Talks back. Never sleeps. Works on your boat today.**
+**A deckhand with perfect memory. Talks back. Never sleeps. Working on the water today.**
 
 *For the working deck. Not a tech project. A second mate.*
 
@@ -17,6 +17,21 @@ A week later you're idling in the same water, coffee in hand, and you ask: **"Ho
 That's the whole point of this thing.
 
 You hire a deckhand who never sleeps, never complains, and never touches the wheel without asking. He watches. He remembers. He writes it down so you don't have to. When he's sure, he suggests. When he's not, he asks. The wheel is still yours. Always.
+
+---
+
+## Where this is today
+
+**Working on the water right now:**
+- **Sounder watch (LEVEL 2):** The daemon runs live on F/V EILEEN. Every minute it notes what changed. Every ten minutes it saves a record. End of day, a full briefing. The scrubber UI lets you replay any day. No logbook to keep; it writes itself.
+
+**Coming next season:**
+- **Voice mate (LEVEL 1):** Memory is ready — transcripts filed by time and GPS. The end-to-end voice conversation (talk to it, it talks back) is getting wired in now.
+- **Eyes in the engine room (LEVEL 3):** Designed. Forward cam for logs and buoys in the dark. IR cam for hot spots before they're failures.
+- **Wake-word autopilot (LEVEL 4):** Designed. Say the word, he steers. Your hand on the wheel outranks everything, always.
+- **Build-it-together (LEVEL 5):** Designed. He interviews you, you two sketch the plan, he hands you a wiring diagram for YOUR boat and code you can read.
+
+Straight talk: the sounder watch works today. The rest is in the water and coming. We're not overselling it.
 
 ---
 
@@ -48,7 +63,9 @@ If you grab the wheel, he goes quiet and politely asks why. Out loud. Even a gru
 
 ## Getting started
 
-1. **Install the app** on the boat's laptop (Windows, one installer).
+This is crew-run software, not shrink-wrap. Getting it going takes a runbook, not a download. But once it's running, it works.
+
+1. **Talk to us.** We'll walk you through what fits your boat.
 2. **Plug in your GPS** — and the sounder screen, when you're ready for level 2.
 3. **Say something.** "Start the log." That's it — he's remembering.
 
