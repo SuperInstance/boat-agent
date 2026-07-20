@@ -118,6 +118,18 @@ frame-at-cursor < 100 ms from warm tier, trace sync error < 1 frame.
 Secondary risk: annotation Christmas-tree — preset color-coding with
 **one toggleable layer at a time** is non-negotiable.
 
+## Amendment (docs/23, 2026-07-19)
+
+- **Presets-vs-rate-drag RESOLVED:** drag owns scrubbing (variable-rate
+  drag, T1); 1×/2×/10× presets are playback-only.
+- **44 px rule amended:** primary targets 64 px, floor 48 px, dead space
+  between (U4).
+- **Palette rule amended:** four OpenBridge palettes (Bright/Day/Dusk/
+  Night), not two themes (U1).
+- **New requirements:** keyboard fallback for all functions (U6 — wet
+  capacitive failure is physics); braced-interaction layout with the
+  timeline at the bottom edge (U5); motion-adaptive sizing experiment (U7).
+
 ## Open taste questions (flagged, not decided)
 
 - Scrubber playback speed presets (1×/2×/10×) vs continuous rate drag —

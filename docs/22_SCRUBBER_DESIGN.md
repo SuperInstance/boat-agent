@@ -93,6 +93,20 @@ companion (docs/19 API covers it later) · novel-frame badges · FTS
 search · briefings reader · command palette · Tauri rewrite, installer,
 autostart.
 
+## Amendment (docs/23, 2026-07-19)
+
+- Component 2 (timeline): **variable-rate drag** — drag scrubs, finger
+  offset downward = finer rate. No jog-wheel UI, ever (strongest
+  negative result in the research).
+- Component 3 (frame viewer): the frame IS the thumbnail at 10-min
+  cadence; server-side storyboard strip when cadence reaches 30s.
+- New: provenance-separated event tracks (machine vs human marks) with
+  "+N" clustering enforced in the component; two-level zoom, **never
+  fisheye**; highlight loop gets configurable lead/lag + big
+  next/prev-event buttons.
+- New component 0: **keyboard fallback** (arrows/space/0–3) — covers
+  wet-screen days.
+
 ## Where it lives
 
 `tzpro-agent/scrubber/` (serve.py + static/index.html) for the MVP —

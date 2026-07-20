@@ -106,6 +106,28 @@ learning channel (superior to preference clicks):
   calls 94% this trip."** That number — not marketing — is what moves the
   dial.
 
+## Amendment (docs/23 UX research, 2026-07-19)
+
+1. **Effective autonomy is the primary readout.** The dial is a setpoint;
+   the display annunciates what the system is ACTUALLY doing (aviation's
+   14 CFR 25.1329 rule: selector position is not an acceptable means of
+   indication). Any dial↔effective gap is shown with its cause, and every
+   envelope-driven transition fires a critical-lane annunciation.
+2. **"91% conf" is banned from captain-facing surfaces.** Show calibrated
+   per-class hit rates instead ("17 of my last 20 calls like this held").
+   Raw scores are Auditor-internal.
+3. **Escalation cards: evidence first, recommendation behind a tap.**
+   Recommendation-first + time pressure = rubber-stamp machine that
+   trains itself on its own answers. Known-answer probe escalations
+   measure the captain's rubber-stamp rate as a system health metric.
+4. **The agreement metric shows the full contingency table** —
+   agreements, disagreements, and outcomes ("the 3 times I disagreed, I
+   was right twice"), weekly digest only, never a persistent number.
+5. **Engagement is engineered:** fallback-activated events get persistent
+   badges until acknowledged; "days since meaningful captain input" is an
+   Auditor metric that lowers effective autonomy as it grows. Degrade
+   toward the human applies to the human's engagement too.
+
 ## The attention budget (design targets)
 
 | Metric | Target |

@@ -73,7 +73,8 @@ boat-agent/
 │   ├── 19_CLOUD_TWIN.md                 ← Cloudflare backup/free-analysis architecture
 │   ├── 20_GUI_AND_PRESETS.md            ← scrubber UX, preset tiers, command palette
 │   ├── 21_PHASE_2_PLAN.md               ← ACTIVE PLAN: durability→visibility→backup→replay
-│   └── 22_SCRUBBER_DESIGN.md            ← day scrubber MVP: architecture + build order
+│   ├── 22_SCRUBBER_DESIGN.md            ← day scrubber MVP: architecture + build order
+│   └── 23_UX_DEEP_RESEARCH.md           ← evidence base: marine HCI, timelines, AI trust
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
 │       ├── kernel/                scheduler, tick, module lifecycle
