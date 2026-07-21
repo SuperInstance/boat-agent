@@ -22,6 +22,12 @@ You hire a deckhand who never sleeps, never complains, and never touches the whe
 
 ## Where this is today
 
+> **Looking for the working software?** The sounder watch, memory twin,
+> and scrubber UI live in the vessel-side repo:
+> **[tzpro-agent](https://github.com/SuperInstance/tzpro-agent)** — start
+> at its [`FIRST_BOAT.md`](https://github.com/SuperInstance/tzpro-agent/blob/master/FIRST_BOAT.md).
+> This repo (boat-agent) is the kernel, contracts, and design system.
+
 **Working on the water right now:**
 - **Sounder watch (LEVEL 2):** The daemon runs live on F/V EILEEN. Every minute it notes what changed. Every ten minutes it saves a record. End of day, a full briefing. The scrubber UI lets you replay any day. No logbook to keep; it writes itself.
 

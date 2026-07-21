@@ -103,3 +103,75 @@ These are real and open — tracked here until resolved:
 ---
 
 *(Next review entry goes above this line.)*
+
+---
+
+## REVIEW-002: Sandbox onboarding test — two outside agents, zero context
+
+**Date:** 2026-07-20 · **Reviewer:** Kimi (test design), two coder subagents as
+outsider captain-agents · **Scope:** end-to-end onboarding from public
+GitHub docs only, with simulated vessel data · **Verdict:** **the docs
+fail the funnel.** Neither agent reached a running system inside 30
+minutes — both burned their runway on documentation archaeology.
+
+### Method
+
+Two sandboxed starting states (`C:/Users/casey/sandbox/fv-northstar`,
+`fv-annika`): 12 simulated echogram frames with tzpro-shaped sidecars,
+a simulated NMEA log, a letter from a fictional captain, and only the
+public repos as instructions. Agents forbidden to touch the real
+workspace/repos. Both had local Ollama (gemma4:12b) available.
+
+### Results
+
+| Milestone | Northstar (Ray, troller) | Annika (Sarah, charter) |
+|-----------|--------------------------|-------------------------|
+| Clone repos | ✅ | ✅ |
+| Find the right docs | ✅ (slowly) | ✅ (slowly) |
+| Twin built from sim data | ❌ runway out | ❌ runway out |
+| Cascade M1/M10 run | ❌ | ❌ |
+| Scrubber serving | ❌ | ❌ |
+
+### The failures that matter (both agents converged)
+
+1. **The funnel is broken at the top.** The fisherman-facing README
+   celebrates the sounder watch — but boat-agent contains none of that
+   software, and never says it lives in tzpro-agent. Annika-agent:
+   "the single fix would have saved the whole doc-archaeology phase."
+2. **The default workspace is the developer's machine.**
+   `C:\Users\casey\.openclaw\workspace\tzpro-agent` is hardcoded as
+   default everywhere; no install doc mentions `TZPRO_WORKSPACE`. A new
+   boat would write into someone else's install — or refuse (as our
+   sandbox rules did).
+3. **No "first boat install" page.** tzpro-agent has 5 competing
+   top-level docs (README/ONBOARDING/BOAT_RUNBOOK/VISION/
+   ARCHITECTURE_REVIEW) with no indicated starting line, amid ~60 loose
+   Python files.
+4. **No documented batch/backfill mode.** Every runbook assumes a live
+   sounder; the one-shot `python -m cascade.minute_loop` entry point is
+   discoverable only in source.
+5. **Model setup folklore.** `moondream:latest` default isn't installed;
+   the gemma4 fallback and the `/api/chat` requirement live only in
+   field notes.
+6. **"Could a normal captain do this?" — unanimous NO.**
+
+### Fixes shipped (same day)
+
+- boat-agent README: "Where the working software lives" pointer block
+  (tzpro-agent is the vessel-side software; boat-agent is kernel +
+  contracts) added to the top section and the "Where this is today" block.
+- tzpro-agent `FIRST_BOAT.md`: the single starting line — workspace env
+  var, model note (gemma4 works, moondream optional), one-shot backfill
+  command, scrubber start, sim-data usage. README now points at it.
+- docs/21: sandbox-test finding recorded; "first-boat install page"
+  added to the phase exit criteria.
+
+### Method note (kept)
+
+Sandbox starter kit (`sandbox/` layout + captain's letter template) is
+reusable for every future onboarding change: any PR touching install
+docs should re-run the sandbox test.
+
+---
+
+*(Next review entry goes above this line.)*
