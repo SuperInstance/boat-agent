@@ -315,6 +315,21 @@ almost entirely config + drivers. That result *is* the modularity proof.
 
 ---
 
+## Q-UX-3: vessel-quest gamification — does catch-quest XP fit the captain, or is it noise? Test with the deck-mode presets (docs/20).
+
+## Q-UX-4: Voice-owner identification
+
+**Status:** Open · **Area:** human loop · **From:** docs/26 field additions
+
+When crew is aboard, the system must know whose voice carries command
+authority. Options: (a) wake-word + proximity (wheelhouse mic, paired
+phone) — current default; (b) speaker embeddings per registered voice;
+(c) command confirmation for any non-captain voice. Good answer: commands
+restricted to captain by default with a named-crew registry, and every
+log line records who the system *believed* it heard.
+
+---
+
 ## Resolved
 
 *(none yet — this file started today)*
