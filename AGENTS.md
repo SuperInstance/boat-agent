@@ -79,6 +79,7 @@ boat-agent/
 │   ├── 25_RESEARCH_LANDSCAPE.md         ← 2021-2026 science base: 4 streams, ~60 papers
 │   ├── 26_TWO_SIDES_OF_THE_SHELL.md     ← operational UX: one day, both loops
 │   ├── 27_GIT_AGENTS.md                 ← small modular git-native sensor agents
+│   ├── 28_SHELL_ECOLOGY.md              ← molting, distillation, hardware tiers
 │   └── research/                        ← deep-study source reports (per cluster)
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
