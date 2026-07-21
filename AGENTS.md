@@ -77,6 +77,8 @@ boat-agent/
 │   ├── 23_UX_DEEP_RESEARCH.md           ← evidence base: marine HCI, timelines, AI trust
 │   ├── 24_ECOSYSTEM_DEEP_STUDY.md       ← org-wide synergy study + adoption plan
 │   ├── 25_RESEARCH_LANDSCAPE.md         ← 2021-2026 science base: 4 streams, ~60 papers
+│   ├── 26_TWO_SIDES_OF_THE_SHELL.md     ← operational UX: one day, both loops
+│   ├── 27_GIT_AGENTS.md                 ← small modular git-native sensor agents
 │   └── research/                        ← deep-study source reports (per cluster)
 ├── core/                          ← Rust microkernel (the only trusted code)
 │   └── src/
