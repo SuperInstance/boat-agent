@@ -18,3 +18,4 @@ Thumbs.db
 
 # Local tool settings
 .claude/
+core/target/
